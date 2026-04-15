@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hệ thống nhận diện rác thải</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Waste Intelligence Platform</p>
+          <h1>Hệ thống nhận diện rác thải bằng AI</h1>
+          <p class="hero-text">
+            Ứng dụng sử dụng YOLOv8 để phát hiện và phân loại rác thải trong ảnh thực tế. Bạn có
+            thể tải ảnh từ máy, chụp bằng camera, điều chỉnh ngưỡng dự đoán và quan sát kết quả
+            theo thời gian thực để phục vụ demo và báo cáo.
+          </p>
+          <div class="hero-pills">
+            <span>5 lớp phân loại</span>
+            <span>YOLOv8 Detection</span>
+            <span>Demo local</span>
+          </div>
+        </div>
+
+        <div class="hero-side">
+          <div class="theme-toggle-wrap">
+            <button type="button" id="theme-toggle" class="ghost-button theme-toggle">🌙 Chế độ tối</button>
+          </div>
+          <div class="hero-card">
+            <span class="hero-card-label">Model demo</span>
+            <strong>Baseline + Fine-tune</strong>
+            <p>Hỗ trợ chuyển đổi giữa model baseline và model fine-tune để so sánh kết quả.</p>
+          </div>
+          <div class="hero-card accent">
+            <span class="hero-card-label">Đầu vào</span>
+            <strong>Ảnh, webcam</strong>
+            <p>Phù hợp cho demo đồ án và trình bày kết quả huấn luyện trên dữ liệu rác thải.</p>
+          </div>
+        </div>
+      </header>
+
+      <main class="app-grid">
+        <section class="panel control-panel">
+          <div class="section-heading">
+            <div>
+              <p class="section-tag">Điều khiển</p>
+              <h2>Cấu hình dự đoán</h2>
+              <h3><p>Thiết lập model, ngưỡng confidence và cách nạp ảnh trước khi suy luận.</p></h3>
+            </div>
+          </div>
+
+          <form id="predict-form" class="control-form">
+            <div class="form-card">
+              <label class="field">
+                <span>Chọn model</span>
+                <select id="model_id" name="model_id">
+                  {% for model in models %}
+                  <option value="{{ model.id }}" {% if model.is_default %}selected{% endif %}>
+                    {{ model.label }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Ngưỡng confidence</span>
+                <div class="range-head">
+                  <small>Độ nhạy phát hiện</small>
+                  <strong id="conf-value">{{ default_confidence }}</strong>
+                </div>
+                <input id="conf" name="conf" type="range" min="0.05" max="0.9" step="0.05" value="{{ default_confidence }}" />
+              </label>
+
+              <label class="field">
+                <span>Số lượng box tối đa</span>
+                <input id="max_det" name="max_det" type="number" min="1" max="300" value="{{ default_max_det }}" />
+              </label>
+            </div>
+
+            <div class="split-block">
+              <label class="upload-box" for="image-input">
+                <input id="image-input" name="image" type="file" accept="image/*" hidden />
+                <span class="upload-icon">+</span>
+                <span class="upload-title">Tải ảnh từ máy tính</span>
+                <span class="upload-text">Hỗ trợ JPG, JPEG, PNG, WEBP</span>
+              </label>
+
+              <div class="preview-card">
+                <div class="card-top">
+                  <h3>Xem trước ảnh</h3>
+                  <span class="mini-badge">Preview</span>
+                </div>
+                <img id="preview-image" alt="Xem trước ảnh" />
+                <div id="preview-empty" class="empty-state">
+                  <span>Chưa có ảnh nào được chọn</span>
+                  <small>Ảnh bạn tải lên sẽ được hiển thị tại đây.</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="camera-card">
+              <div class="card-top">
+                <div>
+                  <h3>Chụp ảnh bằng camera</h3>
+                  <p>Nếu trình duyệt cho phép, bạn có thể chụp ảnh trực tiếp để demo nhanh.</p>
+                </div>
+                <span class="mini-badge">Camera</span>
+              </div>
+              <video id="camera-stream" autoplay playsinline muted></video>
+              <canvas id="camera-canvas" hidden></canvas>
+              <div class="camera-actions">
+                <button type="button" id="start-camera" class="secondary-button">Bật camera</button>
+                <button type="button" id="stop-camera" class="ghost-button">Tắt camera</button>
+                <button type="button" id="capture-camera" class="secondary-button">Chụp ảnh</button>
+              </div>
+            </div>
+
+            <div class="action-row">
+              <button type="submit" class="primary-button">Dự đoán ngay</button>
+              <button type="button" id="reset-button" class="ghost-button">Đặt lại</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel result-panel">
+          <div class="section-heading">
+            <div>
+              <p class="section-tag">Kết quả</p>
+              <h2>Bảng điều khiển dự đoán</h2>
+            </div>
+            <p id="model-used">Model đang sử dụng: chưa có</p>
+          </div>
+
+          <div id="status-box" class="status-box idle">Sẵn sàng dự đoán.</div>
+
+          <div class="summary-row">
+            <article class="summary-card">
+              <span>Tổng số box</span>
+              <strong id="total-detections">0</strong>
+            </article>
+            <article class="summary-card">
+              <span>Số class xuất hiện</span>
+              <strong id="classes-found">0</strong>
+            </article>
+            <article class="summary-card wide">
+              <span>Ghi chú</span>
+              <strong>Kết quả dự đoán sẽ cập nhật sau mỗi lần suy luận</strong>
+            </article>
+          </div>
+
+          <div class="result-visuals">
+            <div class="result-card">
+              <div class="card-top">
+                <h3>Ảnh gốc</h3>
+                <span class="mini-badge">Input</span>
+              </div>
+              <img id="result-original" alt="Ảnh gốc" />
+              <div id="original-empty" class="empty-state result-empty">
+                <span>Chưa có kết quả</span>
+                <small>Ảnh đầu vào sẽ hiển thị tại đây sau khi dự đoán.</small>
+              </div>
+            </div>
+
+            <div class="result-card">
+              <div class="card-top">
+                <h3>Ảnh đã nhận diện</h3>
+                <span class="mini-badge accent">Output</span>
+              </div>
+              <img id="result-annotated" alt="Ảnh đã nhận diện" />
+              <div id="annotated-empty" class="empty-state result-empty">
+                <span>Chưa có kết quả</span>
+                <small>Bounding box và nhãn class sẽ xuất hiện tại đây.</small>
+              </div>
+              <a id="download-link" class="download-link" download="prediction.jpg">Tải ảnh kết quả</a>
+            </div>
+          </div>
+
+          <div class="insight-grid">
+            <div class="table-card">
+              <div class="card-top">
+                <h3>Thống kê theo class</h3>
+                <span class="mini-badge">Summary</span>
+              </div>
+              <div id="counts-table" class="table-placeholder">Chưa có dữ liệu.</div>
+            </div>
+
+            <div class="table-card">
+              <div class="card-top">
+                <h3>Danh sách dự đoán</h3>
+                <span class="mini-badge">Details</span>
+              </div>
+              <div id="detections-table" class="table-placeholder">Chưa có dữ liệu.</div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      window.APP_CONFIG = {
+        modelsAvailable: {{ models|tojson }}
+      };
+    </script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  </body>
+</html>
