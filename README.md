@@ -76,18 +76,21 @@ Model baseline tốt nhất hiện tại, dùng để demo ổn định
 - [demo_app](./demo_app)  
 Ứng dụng web demo hoàn chỉnh bằng Flask
 
+- [scripts](./scripts)  
+Thư mục chứa các script xử lý dữ liệu: phân tích, remap, merge và resplit dataset
+
 ## Quy Trình Huấn Luyện
 
 ### 1. Phân tích dữ liệu
 
 ```bash
-python analyze_yolo_dataset.py
+python scripts/analyze_yolo_dataset.py
 ```
 
 ### 2. Resplit dữ liệu để tránh leakage
 
 ```bash
-python resplit_yolo_dataset.py --source merged_5class_yolo --output merged_5class_yolo_resplit
+python scripts/resplit_yolo_dataset.py --source merged_5class_yolo --output merged_5class_yolo_resplit
 ```
 
 ### 3. Huấn luyện baseline YOLOv8n
@@ -211,17 +214,106 @@ pip install -r requirements.txt
 
 ## Các Script Đã Xây Dựng
 
-- [analyze_yolo_dataset.py](./analyze_yolo_dataset.py)  
-Phân tích phân bố class, số box, ảnh trùng và leakage giữa các split
+Các script này được đặt trong thư mục [scripts](./scripts) và là phần rất quan trọng của pipeline xử lý dữ liệu. Chúng giúp dự án không chỉ dừng ở việc train model, mà còn thể hiện rõ cách nhóm làm sạch dữ liệu, tránh leakage và chuẩn hóa đầu vào trước khi fine-tune.
 
-- [resplit_yolo_dataset.py](./resplit_yolo_dataset.py)  
-Chia lại dữ liệu YOLO theo `base image`
+### 1. [analyze_yolo_dataset.py](./scripts/analyze_yolo_dataset.py)
 
-- [remap_garbage_dataset_to_4class.py](./remap_garbage_dataset_to_4class.py)  
-Giữ lại 4 lớp `plastic`, `metal`, `paper`, `cardboard` từ bộ dữ liệu mới
+Vai trò:
+- Phân tích nhanh chất lượng của một YOLO dataset trước khi huấn luyện.
 
-- [merge_yolo_datasets.py](./merge_yolo_datasets.py)  
-Gộp bộ dữ liệu gốc 5 lớp với bộ dữ liệu mới sau remap
+Script này làm gì:
+- Đếm số ảnh, số label và số bounding box trong từng split `train`, `val`, `test`.
+- Thống kê số box theo từng class để phát hiện mất cân bằng dữ liệu.
+- Kiểm tra các dòng label bị lỗi format, class id sai hoặc ảnh bị thiếu label.
+- Phân tích mức độ lặp lại của cùng một `base image`.
+- So sánh `base image` giữa các split để phát hiện hiện tượng `data leakage`.
+
+Khi nào dùng:
+- Dùng đầu tiên, trước khi train baseline.
+- Dùng lại sau mỗi lần tạo dataset mới nếu muốn kiểm tra nhanh độ sạch của dữ liệu.
+
+Đầu vào mặc định:
+- `taco_merged_5class_yolo`
+
+Đầu ra:
+- Một báo cáo JSON in ra console, phù hợp để lưu log hoặc trích số liệu sang báo cáo đồ án.
+
+### 2. [resplit_yolo_dataset.py](./scripts/resplit_yolo_dataset.py)
+
+Vai trò:
+- Chia lại dataset YOLO theo `base image` thay vì chia ngẫu nhiên từng file ảnh.
+
+Vì sao cần script này:
+- Dataset export từ Roboflow hoặc qua augment thường có nhiều biến thể của cùng một ảnh gốc.
+- Nếu các biến thể này rơi vào nhiều split khác nhau, model có thể đạt metric cao giả tạo.
+
+Script này làm gì:
+- Gom các file ảnh thuộc cùng một `base image` vào chung một nhóm.
+- Chia các nhóm này vào `train`, `valid`, `test` theo tỉ lệ đặt trước.
+- Copy ảnh và label sang một thư mục dataset mới.
+- Tạo lại `data.yaml` để dataset đầu ra dùng được ngay với YOLOv8.
+
+Khi nào dùng:
+- Dùng sau khi đã kiểm tra thấy dataset có leakage.
+- Dùng lại sau khi merge nhiều nguồn dữ liệu vào chung một bộ.
+
+Ví dụ:
+```bash
+python scripts/resplit_yolo_dataset.py --source merged_5class_yolo --output merged_5class_yolo_resplit
+```
+
+### 3. [remap_garbage_dataset_to_4class.py](./scripts/remap_garbage_dataset_to_4class.py)
+
+Vai trò:
+- Chuẩn hóa dataset ngoài về hệ class mà dự án đang sử dụng.
+
+Bối cảnh:
+- Dataset `GARBAGE CLASSIFICATION` có 6 lớp, nhưng bài toán hiện tại chỉ cần các lớp tương thích trực tiếp với bộ dữ liệu gốc.
+
+Script này làm gì:
+- Giữ lại 4 lớp: `PLASTIC`, `METAL`, `PAPER`, `CARDBOARD`.
+- Loại bỏ `GLASS` và `BIODEGRADABLE`.
+- Đổi `class id` của bộ dữ liệu ngoài sang hệ class mới.
+- Bỏ những ảnh không còn bounding box hợp lệ sau bước remap.
+- Tạo ra một dataset YOLO mới tên là `garbage_4class_yolo`.
+
+Khi nào dùng:
+- Dùng ngay sau khi tải bộ dữ liệu ngoài về và trước bước merge.
+
+Ý nghĩa trong dự án:
+- Đây là bước giúp dữ liệu từ nhiều nguồn trở nên thống nhất về ngữ nghĩa class, tránh làm mô hình học bị nhiễu.
+
+### 4. [merge_yolo_datasets.py](./scripts/merge_yolo_datasets.py)
+
+Vai trò:
+- Gộp bộ dữ liệu gốc 5 class với bộ dữ liệu ngoài đã remap thành 4 class.
+
+Script này làm gì:
+- Đọc dữ liệu từ hai nguồn: dataset gốc và dataset ngoài đã remap.
+- Copy ảnh và label sang một thư mục chung.
+- Thêm prefix vào tên file để tránh trùng tên giữa hai nguồn dữ liệu.
+- Tạo `data.yaml` cho bộ dữ liệu YOLO 5 class mới sau khi gộp.
+
+Khi nào dùng:
+- Dùng sau khi đã remap xong dataset ngoài.
+- Dùng trước bước `resplit` cuối cùng và trước khi fine-tune model.
+
+Lưu ý:
+- Sau khi merge xong vẫn nên chạy `resplit_yolo_dataset.py` thêm một lần nữa để tránh leakage trên bộ dữ liệu mới.
+
+### Thứ tự sử dụng 4 script trong pipeline
+
+1. `analyze_yolo_dataset.py`  
+Kiểm tra dataset gốc, phát hiện leakage và vấn đề phân bố class.
+
+2. `remap_garbage_dataset_to_4class.py`  
+Chuẩn hóa dataset ngoài về 4 class tương thích.
+
+3. `merge_yolo_datasets.py`  
+Gộp dataset ngoài đã remap với dataset gốc.
+
+4. `resplit_yolo_dataset.py`  
+Chia lại dataset đã gộp theo `base image` để tạo bộ dữ liệu sạch cho fine-tune.
 
 ## Ghi Chú
 
