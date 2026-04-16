@@ -41,7 +41,7 @@ def available_models() -> list[dict]:
                     "id": model_id,
                     "label": label,
                     "path": str(path),
-                    "is_default": model_id == "baseline",
+                    "is_default": model_id == "finetune",
                 }
             )
     return models
@@ -112,7 +112,7 @@ def predict():
 
         confidence = float(request.form.get("conf", DEFAULT_CONFIDENCE))
         max_det = int(request.form.get("max_det", DEFAULT_MAX_DET))
-        model_id = request.form.get("model_id", "baseline")
+        model_id = request.form.get("model_id", "finetune")
 
         image = Image.open(uploaded_file.stream).convert("RGB")
         model, selected_model = get_model(model_id)

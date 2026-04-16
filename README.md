@@ -226,7 +226,7 @@ Gộp bộ dữ liệu gốc 5 lớp với bộ dữ liệu mới sau remap
 ## Ghi Chú
 
 - Model đang dùng cho demo web đã được gom riêng vào thư mục `demo_app/models` để repo gọn hơn.
-- Model mặc định cho demo chính là bản `baseline_best.pt` vì đây là phiên bản đã train hoàn chỉnh và ổn định.
+- Model mặc định cho demo chính là bản `finetune_best.pt` vì đây là phiên bản cho kết quả tốt hơn so với baseline.
 - Phiên fine-tune trên bộ dữ liệu gộp có thể cải thiện thêm, nhưng thời gian huấn luyện lâu hơn do tập dữ liệu lớn hơn đáng kể.
 - Muốn cải thiện chất lượng thực tế, cần bổ sung thêm ảnh bãi rác tại đúng bối cảnh triển khai và gán nhãn nhất quán hơn.
 - Nếu terminal Windows hiển thị sai dấu tiếng Việt, hãy ưu tiên kiểm tra kết quả trực tiếp trên trình duyệt vì app dùng `UTF-8`.
