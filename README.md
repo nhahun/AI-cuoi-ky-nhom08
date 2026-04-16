@@ -50,6 +50,18 @@ Hai lớp bị loại bỏ:
 
 Sau khi remap, dữ liệu được gộp với bộ dữ liệu gốc và tiếp tục được `resplit` lại theo `base image` để tránh hiện tượng trùng ảnh giữa `train`, `valid`, `test`.
 
+## Quy Trình Xử Lý Dữ Liệu Của Nhóm
+
+Trong quá trình xây dựng mô hình, nhóm không sử dụng dữ liệu theo cách "train trực tiếp", mà thực hiện một quy trình xử lý dữ liệu có kiểm soát nhằm tăng độ tin cậy của kết quả huấn luyện.
+
+Trước hết, nhóm phân tích bộ dữ liệu YOLO gốc để đánh giá số lượng ảnh, số bounding box, phân bố class và đặc biệt là hiện tượng trùng `base image` giữa các tập `train`, `val`, `test`. Bước này giúp phát hiện sớm tình trạng `data leakage`, tức là nhiều biến thể của cùng một ảnh gốc xuất hiện ở nhiều split khác nhau, từ đó làm sai lệch metric đánh giá mô hình.
+
+Tiếp theo, nhóm thực hiện `resplit` dữ liệu theo `base image` thay vì theo từng file ảnh riêng lẻ. Cách làm này đảm bảo mọi phiên bản augment hoặc export từ cùng một ảnh gốc chỉ nằm trong đúng một split duy nhất. Nhờ đó, tập huấn luyện và tập đánh giá được tách biệt rõ ràng hơn, giúp kết quả mAP phản ánh đúng hơn năng lực tổng quát hóa của mô hình.
+
+Sau khi ổn định bộ dữ liệu gốc, nhóm bổ sung thêm dữ liệu từ nguồn bên ngoài để tăng số lượng mẫu huấn luyện cho các lớp còn thiếu. Tuy nhiên, bộ dữ liệu ngoài có hệ class khác với bài toán đang xây dựng, vì vậy nhóm tiến hành `remap` class, chỉ giữ lại các lớp có ý nghĩa tương thích trực tiếp là `plastic`, `metal`, `paper` và `cardboard`, đồng thời loại bỏ các lớp không phù hợp như `glass` và `biodegradable`.
+
+Cuối cùng, nhóm gộp bộ dữ liệu ngoài đã remap với bộ dữ liệu gốc 5 class, sau đó tiếp tục chia lại toàn bộ dữ liệu theo `base image` thêm một lần nữa. Bộ dữ liệu kết quả sau bước này được sử dụng để fine-tune mô hình YOLOv8n từ checkpoint baseline. Quy trình này giúp nhóm vừa mở rộng dữ liệu huấn luyện, vừa hạn chế nhiễu ngữ nghĩa class và tránh leakage trong toàn bộ pipeline.
+
 ## Các Thư Mục Quan Trọng
 
 - [taco_merged_5class_yolo](./taco_merged_5class_yolo)  
