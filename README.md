@@ -1,6 +1,6 @@
 # Dự Án Nhận Diện Rác Thải Bằng YOLOv8
 
-Dự án này xây dựng mô hình nhận diện rác thải trong ảnh bãi rác hoặc môi trường thực tế bằng YOLOv8. Hệ thống có nhiệm vụ phát hiện vị trí vật thể và phân loại chúng thành 5 nhóm chính:
+Dự án này xây dựng mô hình nhận diện rác thải trong ảnh, video bãi rác hoặc môi trường thực tế bằng YOLOv8. Hệ thống có nhiệm vụ phát hiện vị trí vật thể và phân loại chúng thành 5 nhóm chính:
 
 - `plastic`
 - `metal`
@@ -8,11 +8,12 @@ Dự án này xây dựng mô hình nhận diện rác thải trong ảnh bãi r
 - `cardboard`
 - `trash`
 
-Ngoài phần huấn luyện mô hình, dự án hiện đã có một ứng dụng web demo hoàn chỉnh bằng `Flask + HTML + CSS + JavaScript` để phục vụ báo cáo và trình bày sản phẩm.
+Ngoài phần huấn luyện mô hình, dự án hiện đã có một ứng dụng web demo hoàn chỉnh bằng `Flask + HTML + CSS + JavaScript` để phục vụ báo cáo và trình bày sản phẩm. Ứng dụng này hỗ trợ cả ảnh tĩnh lẫn video, trong đó video được quét trên toàn bộ clip để thống kê số lượng rác theo từng lớp.
 
 ## Mục Tiêu Dự Án
 
 - Phát hiện rác thải trong ảnh thực tế
+- Phát hiện và thống kê rác thải trong video thực tế
 - Phân loại rác theo 5 lớp đã định nghĩa
 - Xây dựng quy trình hoàn chỉnh từ xử lý dữ liệu, huấn luyện, fine-tune đến demo suy luận
 - Tạo ứng dụng web để trực quan hóa kết quả nhận diện
@@ -132,14 +133,33 @@ yolo detect train resume model=runs/detect/runs_yolo_baseline/trash_yolov8n_fine
 ### Tính năng chính
 
 - Tải ảnh từ máy tính
+- Tải video từ máy tính
 - Chụp ảnh trực tiếp bằng webcam
 - Chọn model để dự đoán
 - Điều chỉnh ngưỡng confidence
-- Hiển thị ảnh gốc và ảnh đã nhận diện
+- Hiển thị ảnh/video đầu vào và ảnh/video đã nhận diện
+- Quét toàn bộ video và tạo thống kê số lượng rác theo từng class
+- Xuất video kết quả có vẽ bounding box
 - Thống kê số lượng theo từng class
 - Hiển thị bảng chi tiết từng bounding box
-- Tải ảnh kết quả về máy
+- Tải ảnh hoặc video kết quả về máy
 - Hỗ trợ chế độ sáng và tối
+
+### Chế độ quét video
+
+Khi người dùng tải một video lên, hệ thống không chỉ dự đoán trên một frame đơn lẻ mà sẽ quét toàn bộ video từ đầu đến cuối. Trong quá trình này, YOLOv8 được dùng cùng cơ chế `object tracking` để gán `track ID` cho từng vật thể khi nó di chuyển qua nhiều frame liên tiếp.
+
+Cách đếm của hệ thống video được thiết kế để tránh lặp:
+- Nếu một vật thể xuất hiện ở nhiều frame nhưng vẫn giữ cùng một `track ID`, hệ thống chỉ tính đó là `1` đối tượng duy nhất.
+- Kết quả cuối cùng là tổng số vật thể theo từng class trên toàn bộ video, thay vì cộng dồn đơn giản số box ở mọi frame.
+
+Ngoài thống kê theo class, ứng dụng còn hiển thị thêm các thông tin hỗ trợ phân tích video như:
+- số frame đã quét,
+- FPS của video,
+- thời lượng video,
+- tổng số box xuất hiện trên các frame,
+- tỉ lệ frame có tracking,
+- và video đầu ra đã được vẽ bounding box để người dùng đối chiếu trực quan.
 
 ### Cấu trúc thư mục app
 
