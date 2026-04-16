@@ -1,18 +1,24 @@
 const form = document.getElementById("predict-form");
-const imageInput = document.getElementById("image-input");
+const mediaInput = document.getElementById("media-input");
 const previewImage = document.getElementById("preview-image");
+const previewVideo = document.getElementById("preview-video");
 const previewEmpty = document.getElementById("preview-empty");
+const previewKindBadge = document.getElementById("preview-kind-badge");
 const confSlider = document.getElementById("conf");
 const confValue = document.getElementById("conf-value");
 const statusBox = document.getElementById("status-box");
 const resultOriginal = document.getElementById("result-original");
+const resultOriginalVideo = document.getElementById("result-original-video");
 const resultAnnotated = document.getElementById("result-annotated");
+const resultAnnotatedVideo = document.getElementById("result-annotated-video");
 const originalEmpty = document.getElementById("original-empty");
 const annotatedEmpty = document.getElementById("annotated-empty");
 const totalDetections = document.getElementById("total-detections");
 const classesFound = document.getElementById("classes-found");
+const summaryNote = document.getElementById("summary-note");
 const countsTable = document.getElementById("counts-table");
 const detectionsTable = document.getElementById("detections-table");
+const detailsTitle = document.getElementById("details-title");
 const modelUsed = document.getElementById("model-used");
 const downloadLink = document.getElementById("download-link");
 const resetButton = document.getElementById("reset-button");
@@ -22,9 +28,14 @@ const startCameraButton = document.getElementById("start-camera");
 const stopCameraButton = document.getElementById("stop-camera");
 const captureCameraButton = document.getElementById("capture-camera");
 const themeToggleButton = document.getElementById("theme-toggle");
+const originalCardTitle = document.getElementById("original-card-title");
+const annotatedCardTitle = document.getElementById("annotated-card-title");
 
 let activeFile = null;
+let activeMediaType = null;
 let mediaStream = null;
+let previewObjectUrl = null;
+
 const THEME_KEY = "waste_demo_theme";
 
 function applyTheme(theme) {
@@ -49,6 +60,16 @@ function setStatus(message, type) {
   statusBox.className = `status-box ${type}`;
 }
 
+function detectMediaType(file) {
+  if (!file) {
+    return null;
+  }
+  if (file.type.startsWith("video/")) {
+    return "video";
+  }
+  return "image";
+}
+
 function fileFromCanvas(canvas) {
   return new Promise((resolve) => {
     canvas.toBlob((blob) => {
@@ -66,18 +87,64 @@ function readFileAsDataURL(file) {
   });
 }
 
+function clearPreviewObjectUrl() {
+  if (previewObjectUrl) {
+    URL.revokeObjectURL(previewObjectUrl);
+    previewObjectUrl = null;
+  }
+}
+
+function hidePreviewMedia() {
+  previewImage.style.display = "none";
+  previewImage.src = "";
+  previewVideo.style.display = "none";
+  previewVideo.pause();
+  previewVideo.removeAttribute("src");
+  previewVideo.load();
+}
+
 async function updatePreview(file) {
+  clearPreviewObjectUrl();
+  hidePreviewMedia();
+
   if (!file) {
-    previewImage.style.display = "none";
-    previewEmpty.style.display = "block";
-    previewImage.src = "";
+    previewEmpty.style.display = "grid";
+    previewKindBadge.textContent = "Preview";
+    return;
+  }
+
+  activeMediaType = detectMediaType(file);
+  previewEmpty.style.display = "none";
+
+  if (activeMediaType === "video") {
+    previewObjectUrl = URL.createObjectURL(file);
+    previewVideo.src = previewObjectUrl;
+    previewVideo.style.display = "block";
+    previewKindBadge.textContent = "Video";
     return;
   }
 
   const imageUrl = await readFileAsDataURL(file);
   previewImage.src = imageUrl;
   previewImage.style.display = "block";
-  previewEmpty.style.display = "none";
+  previewKindBadge.textContent = "Ảnh";
+}
+
+function hideResultMedia() {
+  [resultOriginal, resultAnnotated].forEach((element) => {
+    element.style.display = "none";
+    element.src = "";
+  });
+
+  [resultOriginalVideo, resultAnnotatedVideo].forEach((element) => {
+    element.style.display = "none";
+    element.pause();
+    element.removeAttribute("src");
+    element.load();
+  });
+
+  originalEmpty.style.display = "grid";
+  annotatedEmpty.style.display = "grid";
 }
 
 function renderCounts(counts) {
@@ -105,7 +172,9 @@ function renderCounts(counts) {
   `;
 }
 
-function renderDetections(detections) {
+function renderImageDetections(detections) {
+  detailsTitle.textContent = "Danh sách dự đoán";
+
   if (!detections.length) {
     detectionsTable.innerHTML = '<div class="table-placeholder">Không có dự đoán nào.</div>';
     return;
@@ -139,7 +208,41 @@ function renderDetections(detections) {
   `;
 }
 
-function updateResults(payload) {
+function renderVideoDetails(videoSummary) {
+  detailsTitle.textContent = "Thống kê toàn video";
+
+  const detailRows = [
+    ["Tên file", videoSummary.source_filename],
+    ["Số frame đã quét", videoSummary.processed_frames],
+    ["Frame ước lượng", videoSummary.estimated_frame_count],
+    ["FPS", videoSummary.fps],
+    ["Thời lượng (giây)", videoSummary.duration_seconds],
+    ["Tổng box trên các frame", videoSummary.frame_level_detections],
+    ["Tỉ lệ frame có tracking", `${videoSummary.tracking_coverage_percent}%`],
+    ["Chế độ đếm", videoSummary.counting_mode_label],
+  ];
+
+  const rows = detailRows
+    .map(([label, value]) => `<tr><td>${label}</td><td>${value}</td></tr>`)
+    .join("");
+
+  detectionsTable.innerHTML = `
+    <table class="results-table">
+      <thead>
+        <tr>
+          <th>Chỉ số</th>
+          <th>Giá trị</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function updateImageResults(payload) {
+  originalCardTitle.textContent = "Ảnh đầu vào";
+  annotatedCardTitle.textContent = "Ảnh đã nhận diện";
+
   resultOriginal.src = `data:image/jpeg;base64,${payload.original_image}`;
   resultAnnotated.src = `data:image/jpeg;base64,${payload.annotated_image}`;
   resultOriginal.style.display = "block";
@@ -147,13 +250,47 @@ function updateResults(payload) {
   originalEmpty.style.display = "none";
   annotatedEmpty.style.display = "none";
 
-  totalDetections.textContent = payload.summary.total_detections;
-  classesFound.textContent = payload.summary.classes_found;
-  modelUsed.textContent = `Model đang sử dụng: ${payload.model_label}`;
   downloadLink.href = resultAnnotated.src;
+  downloadLink.textContent = "Tải ảnh kết quả";
+  downloadLink.setAttribute("download", "prediction.jpg");
 
   renderCounts(payload.counts);
-  renderDetections(payload.detections);
+  renderImageDetections(payload.detections);
+}
+
+function updateVideoResults(payload) {
+  originalCardTitle.textContent = "Video đầu vào";
+  annotatedCardTitle.textContent = "Video đã nhận diện";
+
+  resultOriginalVideo.src = payload.original_video_url;
+  resultAnnotatedVideo.src = payload.annotated_video_url;
+  resultOriginalVideo.style.display = "block";
+  resultAnnotatedVideo.style.display = "block";
+  originalEmpty.style.display = "none";
+  annotatedEmpty.style.display = "none";
+
+  downloadLink.href = payload.annotated_video_url;
+  downloadLink.textContent = "Tải video kết quả";
+  downloadLink.setAttribute("download", "prediction_video.mp4");
+
+  renderCounts(payload.counts);
+  renderVideoDetails(payload.video_summary);
+}
+
+function updateResults(payload) {
+  hideResultMedia();
+
+  totalDetections.textContent = payload.summary.total_detections;
+  classesFound.textContent = payload.summary.classes_found;
+  summaryNote.textContent = payload.summary.note;
+  modelUsed.textContent = `Model đang sử dụng: ${payload.model_label}`;
+
+  if (payload.media_type === "video") {
+    updateVideoResults(payload);
+    return;
+  }
+
+  updateImageResults(payload);
 }
 
 async function startCamera() {
@@ -196,20 +333,30 @@ async function captureFromCamera() {
   const context = cameraCanvas.getContext("2d");
   context.drawImage(cameraStream, 0, 0, cameraCanvas.width, cameraCanvas.height);
   activeFile = await fileFromCanvas(cameraCanvas);
+  activeMediaType = "image";
   await updatePreview(activeFile);
-  setStatus("Đã chụp ảnh từ camera. Sẵn sàng dự đoán.", "success");
+  setStatus("Đã chụp ảnh từ camera. Sẵn sàng quét.", "success");
 }
 
 confSlider.addEventListener("input", () => {
   confValue.textContent = confSlider.value;
 });
 
-imageInput.addEventListener("change", async (event) => {
+mediaInput.addEventListener("change", async (event) => {
   activeFile = event.target.files[0] || null;
+  activeMediaType = detectMediaType(activeFile);
   await updatePreview(activeFile);
-  if (activeFile) {
-    setStatus("Đã chọn ảnh. Bấm 'Dự đoán ngay' để bắt đầu.", "idle");
+
+  if (!activeFile) {
+    return;
   }
+
+  if (activeMediaType === "video") {
+    setStatus("Đã chọn video. Bấm 'Quét ngay' để thống kê toàn bộ clip.", "idle");
+    return;
+  }
+
+  setStatus("Đã chọn ảnh. Bấm 'Quét ngay' để bắt đầu.", "idle");
 });
 
 startCameraButton.addEventListener("click", startCamera);
@@ -226,20 +373,20 @@ if (themeToggleButton) {
 resetButton.addEventListener("click", async () => {
   form.reset();
   activeFile = null;
+  activeMediaType = null;
   confValue.textContent = confSlider.value;
   await updatePreview(null);
-  resultOriginal.style.display = "none";
-  resultAnnotated.style.display = "none";
-  resultOriginal.src = "";
-  resultAnnotated.src = "";
-  originalEmpty.style.display = "grid";
-  annotatedEmpty.style.display = "grid";
+  hideResultMedia();
   totalDetections.textContent = "0";
   classesFound.textContent = "0";
+  summaryNote.textContent = "Kết quả dự đoán sẽ cập nhật sau mỗi lần quét.";
   countsTable.innerHTML = '<div class="table-placeholder">Chưa có dữ liệu.</div>';
   detectionsTable.innerHTML = '<div class="table-placeholder">Chưa có dữ liệu.</div>';
+  detailsTitle.textContent = "Chi tiết kết quả";
   modelUsed.textContent = "Model đang sử dụng: chưa có";
   downloadLink.removeAttribute("href");
+  downloadLink.textContent = "Tải kết quả";
+  downloadLink.removeAttribute("download");
   stopCamera(false);
   setStatus("Đã đặt lại giao diện.", "idle");
 });
@@ -248,18 +395,23 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   if (!activeFile) {
-    setStatus("Vui lòng tải ảnh lên hoặc chụp ảnh trước khi dự đoán.", "error");
+    setStatus("Vui lòng tải ảnh, video hoặc chụp ảnh trước khi quét.", "error");
     return;
   }
 
   const formData = new FormData();
-  formData.append("image", activeFile);
+  formData.append("media", activeFile);
   formData.append("conf", document.getElementById("conf").value);
   formData.append("max_det", document.getElementById("max_det").value);
   formData.append("model_id", document.getElementById("model_id").value);
 
   try {
-    setStatus("Đang dự đoán, vui lòng chờ trong giây lát...", "loading");
+    if (activeMediaType === "video") {
+      setStatus("Đang quét toàn bộ video, vui lòng chờ trong giây lát...", "loading");
+    } else {
+      setStatus("Đang quét ảnh, vui lòng chờ trong giây lát...", "loading");
+    }
+
     const response = await fetch("/api/predict", {
       method: "POST",
       body: formData,
@@ -271,10 +423,11 @@ form.addEventListener("submit", async (event) => {
     }
 
     updateResults(payload);
-    setStatus("Dự đoán thành công.", "success");
+    setStatus("Quét thành công.", "success");
   } catch (error) {
     setStatus(error.message, "error");
   }
 });
 
+hideResultMedia();
 initTheme();

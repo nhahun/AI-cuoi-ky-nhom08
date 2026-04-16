@@ -349,8 +349,11 @@ input[type="range"] {
 }
 
 #preview-image,
+#preview-video,
 #result-original,
-#result-annotated {
+#result-original-video,
+#result-annotated,
+#result-annotated-video {
   display: none;
   width: 100%;
   min-height: 250px;
@@ -507,6 +510,12 @@ input[type="range"] {
 .download-link {
   display: inline-flex;
   margin-top: 14px;
+}
+
+#preview-video,
+#result-original-video,
+#result-annotated-video {
+  background: #101613;
 }
 
 .insight-grid {

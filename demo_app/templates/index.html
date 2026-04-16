@@ -13,14 +13,14 @@
           <p class="eyebrow">Waste Intelligence Platform</p>
           <h1>Hệ thống nhận diện rác thải bằng AI</h1>
           <p class="hero-text">
-            Ứng dụng sử dụng YOLOv8 để phát hiện và phân loại rác thải trong ảnh thực tế. Bạn có
-            thể tải ảnh từ máy, chụp bằng camera, điều chỉnh ngưỡng dự đoán và quan sát kết quả
-            theo thời gian thực để phục vụ demo và báo cáo.
+            Ứng dụng sử dụng YOLOv8 để phát hiện và phân loại rác thải trong ảnh và video thực tế.
+            Bạn có thể tải ảnh từ máy, quét toàn bộ video, chụp ảnh bằng camera, điều chỉnh ngưỡng
+            dự đoán và theo dõi thống kê kết quả ngay trên giao diện demo.
           </p>
           <div class="hero-pills">
             <span>5 lớp phân loại</span>
-            <span>YOLOv8 Detection</span>
-            <span>Demo local</span>
+            <span>Ảnh + Video</span>
+            <span>YOLOv8 Tracking</span>
           </div>
         </div>
 
@@ -31,12 +31,12 @@
           <div class="hero-card">
             <span class="hero-card-label">Model demo</span>
             <strong>Baseline + Fine-tune</strong>
-            <p>Hỗ trợ chuyển đổi giữa model baseline và model fine-tune để so sánh kết quả.</p>
+            <p>Hỗ trợ chuyển đổi giữa model baseline và model fine-tune để so sánh kết quả dự đoán.</p>
           </div>
           <div class="hero-card accent">
             <span class="hero-card-label">Đầu vào</span>
-            <strong>Ảnh, webcam</strong>
-            <p>Phù hợp cho demo đồ án và trình bày kết quả huấn luyện trên dữ liệu rác thải.</p>
+            <strong>Ảnh, video, webcam</strong>
+            <p>Video sẽ được quét toàn bộ để thống kê số lượng rác theo class trên cả clip.</p>
           </div>
         </div>
       </header>
@@ -47,7 +47,7 @@
             <div>
               <p class="section-tag">Điều khiển</p>
               <h2>Cấu hình dự đoán</h2>
-              <h3><p>Thiết lập model, ngưỡng confidence và cách nạp ảnh trước khi suy luận.</p></h3>
+              <p>Thiết lập model, ngưỡng confidence và chọn ảnh hoặc video trước khi suy luận.</p>
             </div>
           </div>
 
@@ -80,22 +80,23 @@
             </div>
 
             <div class="split-block">
-              <label class="upload-box" for="image-input">
-                <input id="image-input" name="image" type="file" accept="image/*" hidden />
+              <label class="upload-box" for="media-input">
+                <input id="media-input" name="media" type="file" accept="image/*,video/*" hidden />
                 <span class="upload-icon">+</span>
-                <span class="upload-title">Tải ảnh từ máy tính</span>
-                <span class="upload-text">Hỗ trợ JPG, JPEG, PNG, WEBP</span>
+                <span class="upload-title">Tải ảnh hoặc video</span>
+                <span class="upload-text">Hỗ trợ JPG, PNG, WEBP, MP4, MOV, AVI, MKV, WEBM</span>
               </label>
 
               <div class="preview-card">
                 <div class="card-top">
-                  <h3>Xem trước ảnh</h3>
-                  <span class="mini-badge">Preview</span>
+                  <h3>Xem trước đầu vào</h3>
+                  <span class="mini-badge" id="preview-kind-badge">Preview</span>
                 </div>
                 <img id="preview-image" alt="Xem trước ảnh" />
+                <video id="preview-video" controls playsinline muted></video>
                 <div id="preview-empty" class="empty-state">
-                  <span>Chưa có ảnh nào được chọn</span>
-                  <small>Ảnh bạn tải lên sẽ được hiển thị tại đây.</small>
+                  <span>Chưa có ảnh hoặc video nào được chọn</span>
+                  <small>Dữ liệu bạn tải lên sẽ được hiển thị tại đây trước khi quét.</small>
                 </div>
               </div>
             </div>
@@ -104,7 +105,7 @@
               <div class="card-top">
                 <div>
                   <h3>Chụp ảnh bằng camera</h3>
-                  <p>Nếu trình duyệt cho phép, bạn có thể chụp ảnh trực tiếp để demo nhanh.</p>
+                  <p>Nếu trình duyệt cho phép, bạn có thể chụp ảnh trực tiếp để dự đoán nhanh.</p>
                 </div>
                 <span class="mini-badge">Camera</span>
               </div>
@@ -118,7 +119,7 @@
             </div>
 
             <div class="action-row">
-              <button type="submit" class="primary-button">Dự đoán ngay</button>
+              <button type="submit" class="primary-button">Quét ngay</button>
               <button type="button" id="reset-button" class="ghost-button">Đặt lại</button>
             </div>
           </form>
@@ -133,11 +134,11 @@
             <p id="model-used">Model đang sử dụng: chưa có</p>
           </div>
 
-          <div id="status-box" class="status-box idle">Sẵn sàng dự đoán.</div>
+          <div id="status-box" class="status-box idle">Sẵn sàng quét ảnh hoặc video.</div>
 
           <div class="summary-row">
             <article class="summary-card">
-              <span>Tổng số box</span>
+              <span>Tổng số đối tượng</span>
               <strong id="total-detections">0</strong>
             </article>
             <article class="summary-card">
@@ -146,34 +147,36 @@
             </article>
             <article class="summary-card wide">
               <span>Ghi chú</span>
-              <strong>Kết quả dự đoán sẽ cập nhật sau mỗi lần suy luận</strong>
+              <strong id="summary-note">Kết quả dự đoán sẽ cập nhật sau mỗi lần quét.</strong>
             </article>
           </div>
 
           <div class="result-visuals">
             <div class="result-card">
               <div class="card-top">
-                <h3>Ảnh gốc</h3>
+                <h3 id="original-card-title">Đầu vào</h3>
                 <span class="mini-badge">Input</span>
               </div>
-              <img id="result-original" alt="Ảnh gốc" />
+              <img id="result-original" alt="Ảnh đầu vào" />
+              <video id="result-original-video" controls playsinline></video>
               <div id="original-empty" class="empty-state result-empty">
                 <span>Chưa có kết quả</span>
-                <small>Ảnh đầu vào sẽ hiển thị tại đây sau khi dự đoán.</small>
+                <small>Ảnh hoặc video đầu vào sẽ hiển thị tại đây sau khi quét.</small>
               </div>
             </div>
 
             <div class="result-card">
               <div class="card-top">
-                <h3>Ảnh đã nhận diện</h3>
+                <h3 id="annotated-card-title">Đầu ra đã nhận diện</h3>
                 <span class="mini-badge accent">Output</span>
               </div>
               <img id="result-annotated" alt="Ảnh đã nhận diện" />
+              <video id="result-annotated-video" controls playsinline></video>
               <div id="annotated-empty" class="empty-state result-empty">
                 <span>Chưa có kết quả</span>
-                <small>Bounding box và nhãn class sẽ xuất hiện tại đây.</small>
+                <small>Bounding box, class và video kết quả sẽ xuất hiện tại đây.</small>
               </div>
-              <a id="download-link" class="download-link" download="prediction.jpg">Tải ảnh kết quả</a>
+              <a id="download-link" class="download-link" download>Tải kết quả</a>
             </div>
           </div>
 
@@ -188,7 +191,7 @@
 
             <div class="table-card">
               <div class="card-top">
-                <h3>Danh sách dự đoán</h3>
+                <h3 id="details-title">Chi tiết kết quả</h3>
                 <span class="mini-badge">Details</span>
               </div>
               <div id="detections-table" class="table-placeholder">Chưa có dữ liệu.</div>
