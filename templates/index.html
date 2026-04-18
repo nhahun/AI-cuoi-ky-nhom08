@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EcoVision AI - Nhận diện rác thải bằng YOLOv8</title>
+    <meta
+      name="description"
+      content="Landing page và demo web nhận diện rác thải bằng YOLOv8. Hỗ trợ ảnh, video, webcam, thống kê theo lớp và trực quan hóa kết quả bằng Flask."
+    />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+  </head>
+  <body>
+    <div class="site-shell">
+      <section class="hero-section" id="tong-quan">
+        <div class="hero-video-layer">
+          <video
+            id="hero-video"
+            class="hero-video"
+            src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260328_083109_283f3553-e28f-428b-a723-d639c617eb2b.mp4"
+            autoplay
+            muted
+            playsinline
+            preload="auto"
+            aria-hidden="true"
+          ></video>
+        </div>
+        <div class="hero-overlay"></div>
+        <div class="hero-radial"></div>
+
+        <header class="topbar">
+          <nav class="navbar container">
+            <a href="#tong-quan" class="brand-logo">
+              EcoVision
+              <sup>AI</sup>
+            </a>
+
+            <div class="nav-links desktop-nav">
+              <a href="#tong-quan">Tổng quan</a>
+              <a href="#quy-trinh">Quy trình</a>
+              <a href="#lop-rac">5 lớp rác</a>
+              <a href="#demo">Demo web</a>
+              <a href="#dinh-huong">Định hướng</a>
+            </div>
+
+            <div class="nav-actions">
+              <button type="button" id="theme-toggle" class="ghost-button theme-toggle">🌙 Chế độ tối</button>
+              <a href="#demo" class="primary-button compact desktop-only">Dùng thử demo</a>
+              <button type="button" id="mobile-menu-toggle" class="mobile-toggle" aria-label="Mở menu">
+                <span></span>
+                <span></span>
+                <span></span>
+              </button>
+            </div>
+          </nav>
+
+          <div id="mobile-nav" class="mobile-nav container">
+            <a href="#tong-quan">Tổng quan</a>
+            <a href="#quy-trinh">Quy trình</a>
+            <a href="#lop-rac">5 lớp rác</a>
+            <a href="#demo">Demo web</a>
+            <a href="#dinh-huong">Định hướng</a>
+            <a href="#demo" class="primary-button compact full-width">Dùng thử demo</a>
+          </div>
+        </header>
+
+        <div class="container hero-content">
+          <div class="hero-copy">
+            <p class="eyebrow animate-fade-rise">Nhận diện rác thải bằng YOLOv8 cho phân loại thông minh hơn</p>
+            <h1 class="hero-title animate-fade-rise">
+              Nhận diện rác nhanh hơn,
+              <span class="text-accent italic">phân loại sạch hơn</span>,
+              và xây dựng
+              <span class="text-muted italic"> quy trình tái chế tốt hơn.</span>
+            </h1>
+            <p class="hero-description animate-fade-rise-delay">
+              Dự án của nhóm sử dụng computer vision để phát hiện rác trong ảnh và video thực tế,
+              phân loại thành 5 nhóm mục tiêu gồm plastic, metal, paper, cardboard và trash,
+              đồng thời trực quan hóa kết quả bằng một web demo hoàn chỉnh phục vụ báo cáo và trình bày sản phẩm.
+            </p>
+
+            <div class="hero-buttons animate-fade-rise-delay-2">
+              <a href="#demo" class="primary-button large">Khám phá demo</a>
+              <a href="#quy-trinh" class="secondary-button large">Xem quy trình huấn luyện</a>
+            </div>
+          </div>
+
+          <div class="metric-grid animate-fade-rise-delay-2">
+            <article class="glass-card metric-card">
+              <strong>5</strong>
+              <span>lớp rác mục tiêu</span>
+            </article>
+            <article class="glass-card metric-card">
+              <strong>YOLOv8</strong>
+              <span>mô hình phát hiện</span>
+            </article>
+            <article class="glass-card metric-card">
+              <strong>Flask</strong>
+              <span>backend demo web</span>
+            </article>
+            <article class="glass-card metric-card">
+              <strong>CPU-ready</strong>
+              <span>demo chạy ổn định</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <main>
+        <section class="section container section-grid overview-grid" id="van-de">
+          <div>
+            <div class="section-title left-align">
+              <p class="section-eyebrow">Tổng quan dự án</p>
+              <h2>Từ ảnh rác thải thực tế đến kết quả AI có thể giải thích</h2>
+              <p>
+                Hệ thống tập trung vào bài toán phát hiện vị trí vật thể và phân loại rác trong bối cảnh môi trường thật,
+                nơi góc chụp đa dạng, vật thể chồng lấn và nền ảnh phức tạp. Landing page này được nối trực tiếp với backend Flask
+                hiện có để nhóm có thể vừa giới thiệu dự án vừa chạy demo suy luận thật trên cùng một giao diện.
+              </p>
+            </div>
+          </div>
+          <article class="glass-card narrative-card">
+            <p class="mini-eyebrow">Vì sao bài toán này quan trọng</p>
+            <div class="narrative-list">
+              <p>Phân loại rác thủ công thường chậm, thiếu nhất quán và dễ bị nhiễu khi ảnh có nhiều đối tượng xuất hiện cùng lúc.</p>
+              <p>Việc resplit dữ liệu theo base image giúp giảm leakage, từ đó tăng độ tin cậy cho quá trình đánh giá mô hình.</p>
+              <p>Web demo giúp cả người kỹ thuật lẫn không kỹ thuật nhìn thấy trực tiếp AI đang phát hiện gì, đếm như thế nào và còn cần cải thiện ở đâu.</p>
+            </div>
+          </article>
+        </section>
+
+        <section class="section container" id="quy-trinh">
+          <div class="section-title">
+            <p class="section-eyebrow">Quy trình huấn luyện</p>
+            <h2>Pipeline được thiết kế để giảm leakage và tăng độ tin cậy</h2>
+            <p>
+              Nhóm đã đi theo quy trình rõ ràng: phân tích dữ liệu, resplit để tránh trùng ảnh giữa train, valid, test,
+              train baseline YOLOv8n rồi fine-tune trên bộ dữ liệu gộp sau khi remap các lớp tương thích.
+            </p>
+          </div>
+
+          <div class="step-grid">
+            <article class="glass-card step-card">
+              <span class="step-index">01</span>
+              <h3>Phân tích dữ liệu</h3>
+              <p>Kiểm tra phân bố lớp, số lượng box, ảnh trùng và nguy cơ leakage trước khi bước vào huấn luyện.</p>
+            </article>
+            <article class="glass-card step-card">
+              <span class="step-index">02</span>
+              <h3>Resplit an toàn</h3>
+              <p>Chia lại dữ liệu theo base image để giảm hiện tượng một ảnh xuất hiện ở nhiều split khác nhau.</p>
+            </article>
+            <article class="glass-card step-card">
+              <span class="step-index">03</span>
+              <h3>Huấn luyện baseline</h3>
+              <p>Train YOLOv8n trên bộ dữ liệu đã làm sạch để có checkpoint ổn định cho trình diễn và so sánh.</p>
+            </article>
+            <article class="glass-card step-card">
+              <span class="step-index">04</span>
+              <h3>Fine-tune dữ liệu gộp</h3>
+              <p>Bổ sung dữ liệu ngoài đã remap lớp tương thích để cải thiện khả năng tổng quát hóa của mô hình.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section container" id="lop-rac">
+          <div class="section-title">
+            <p class="section-eyebrow">5 lớp nhận diện</p>
+            <h2>Một giao diện thống nhất cho năm nhóm rác mục tiêu</h2>
+            <p>
+              Mô hình hiện tại phát hiện và phân loại 5 lớp chính: plastic, metal, paper, cardboard và trash.
+              Đây cũng là các nhóm sẽ được thống kê ngay trong phần demo bên dưới.
+            </p>
+          </div>
+
+          <div class="class-grid">
+            <article class="glass-card class-card">
+              <div class="class-bar gradient-plastic"></div>
+              <h3>plastic</h3>
+              <p>Nhận diện chai nhựa, bao bì nhựa và các vật thể nhựa phổ biến trong ảnh thực tế.</p>
+            </article>
+            <article class="glass-card class-card">
+              <div class="class-bar gradient-metal"></div>
+              <h3>metal</h3>
+              <p>Phát hiện lon, hộp kim loại và những vật thể có bề mặt kim loại trong môi trường thật.</p>
+            </article>
+            <article class="glass-card class-card">
+              <div class="class-bar gradient-paper"></div>
+              <h3>paper</h3>
+              <p>Theo dõi nhóm giấy trong các bối cảnh dễ nhầm lẫn với cardboard khi vật thể chồng lấn.</p>
+            </article>
+            <article class="glass-card class-card">
+              <div class="class-bar gradient-cardboard"></div>
+              <h3>cardboard</h3>
+              <p>Xử lý thùng carton, bao bì giấy cứng và vật liệu đóng gói sau bước remap dữ liệu.</p>
+            </article>
+            <article class="glass-card class-card">
+              <div class="class-bar gradient-trash"></div>
+              <h3>trash</h3>
+              <p>Gom các loại rác còn lại không thuộc 4 lớp chính để kết quả dự đoán đầy đủ hơn.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section container" id="demo">
+          <div class="section-title">
+            <p class="section-eyebrow">Demo web</p>
+            <h2>Chạy trực tiếp backend Flask trên cùng giao diện giới thiệu</h2>
+            <p>
+              Phần dưới đây đã được nối trực tiếp vào backend hiện tại của bạn. Bạn có thể tải ảnh, quét video,
+              chụp từ webcam, chọn model, chỉnh confidence và xem kết quả detection mà không cần tách sang một trang khác.
+            </p>
+          </div>
+
+          <div class="demo-grid">
+            <section class="glass-card demo-panel control-panel">
+              <div class="card-heading">
+                <div>
+                  <p class="mini-eyebrow">Điều khiển</p>
+                  <h3>Cấu hình dự đoán</h3>
+                  <p>Thiết lập model, ngưỡng confidence và chọn ảnh hoặc video trước khi suy luận.</p>
+                </div>
+              </div>
+
+              <form id="predict-form" class="control-form">
+                <div class="inner-card form-card">
+                  <label class="field">
+                    <span>Chọn model</span>
+                    <select id="model_id" name="model_id">
+                      {% for model in models %}
+                      <option value="{{ model.id }}" {% if model.is_default %}selected{% endif %}>{{ model.label }}</option>
+                      {% endfor %}
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span>Ngưỡng confidence</span>
+                    <div class="range-head">
+                      <small>Độ nhạy phát hiện</small>
+                      <strong id="conf-value">{{ default_confidence }}</strong>
+                    </div>
+                    <input id="conf" name="conf" type="range" min="0.05" max="0.9" step="0.05" value="{{ default_confidence }}" />
+                  </label>
+
+                  <label class="field">
+                    <span>Số lượng box tối đa</span>
+                    <input id="max_det" name="max_det" type="number" min="1" max="300" value="{{ default_max_det }}" />
+                  </label>
+                </div>
+
+                <div class="upload-preview-grid">
+                  <label class="upload-box inner-card" for="media-input">
+                    <input id="media-input" name="media" type="file" accept="image/*,video/*" hidden />
+                    <span class="upload-icon">+</span>
+                    <span class="upload-title">Tải ảnh hoặc video</span>
+                    <span class="upload-text">Hỗ trợ JPG, PNG, WEBP, MP4, MOV, AVI, MKV, WEBM</span>
+                  </label>
+
+                  <div class="preview-card inner-card">
+                    <div class="card-top">
+                      <h4>Xem trước đầu vào</h4>
+                      <span class="mini-badge" id="preview-kind-badge">Preview</span>
+                    </div>
+                    <img id="preview-image" alt="Xem trước ảnh" />
+                    <video id="preview-video" controls playsinline muted></video>
+                    <div id="preview-empty" class="empty-state">
+                      <span>Chưa có ảnh hoặc video nào được chọn</span>
+                      <small>Dữ liệu bạn tải lên sẽ hiển thị tại đây trước khi quét.</small>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="camera-card inner-card">
+                  <div class="card-top">
+                    <div>
+                      <h4>Chụp ảnh bằng camera</h4>
+                      <p>Nếu trình duyệt cho phép, bạn có thể chụp ảnh trực tiếp để dự đoán nhanh.</p>
+                    </div>
+                    <span class="mini-badge">Camera</span>
+                  </div>
+                  <video id="camera-stream" autoplay playsinline muted></video>
+                  <canvas id="camera-canvas" hidden></canvas>
+                  <div class="camera-actions">
+                    <button type="button" id="start-camera" class="secondary-button compact">Bật camera</button>
+                    <button type="button" id="stop-camera" class="ghost-button compact">Tắt camera</button>
+                    <button type="button" id="capture-camera" class="secondary-button compact">Chụp ảnh</button>
+                  </div>
+                </div>
+
+                <div class="action-row">
+                  <button type="submit" class="primary-button">Quét ngay</button>
+                  <button type="button" id="reset-button" class="ghost-button">Đặt lại</button>
+                </div>
+              </form>
+            </section>
+
+            <section class="glass-card demo-panel result-panel">
+              <div class="card-heading space-between">
+                <div>
+                  <p class="mini-eyebrow">Kết quả</p>
+                  <h3>Bảng điều khiển dự đoán</h3>
+                </div>
+                <p id="model-used" class="model-used">Model đang sử dụng: chưa có</p>
+              </div>
+
+              <div id="status-box" class="status-box idle">Sẵn sàng quét ảnh hoặc video.</div>
+
+              <div class="summary-row">
+                <article class="summary-card inner-card">
+                  <span>Tổng số đối tượng</span>
+                  <strong id="total-detections">0</strong>
+                </article>
+                <article class="summary-card inner-card">
+                  <span>Số class xuất hiện</span>
+                  <strong id="classes-found">0</strong>
+                </article>
+                <article class="summary-card inner-card wide">
+                  <span>Ghi chú</span>
+                  <strong id="summary-note">Kết quả dự đoán sẽ cập nhật sau mỗi lần quét.</strong>
+                </article>
+              </div>
+
+              <div class="result-visuals">
+                <div class="result-card inner-card">
+                  <div class="card-top">
+                    <h4 id="original-card-title">Đầu vào</h4>
+                    <span class="mini-badge">Input</span>
+                  </div>
+                  <img id="result-original" alt="Ảnh đầu vào" />
+                  <video id="result-original-video" controls playsinline></video>
+                  <div id="original-empty" class="empty-state result-empty">
+                    <span>Chưa có kết quả</span>
+                    <small>Ảnh hoặc video đầu vào sẽ hiển thị tại đây sau khi quét.</small>
+                  </div>
+                </div>
+
+                <div class="result-card inner-card">
+                  <div class="card-top">
+                    <h4 id="annotated-card-title">Đầu ra đã nhận diện</h4>
+                    <span class="mini-badge accent">Output</span>
+                  </div>
+                  <img id="result-annotated" alt="Ảnh đã nhận diện" />
+                  <video id="result-annotated-video" controls playsinline></video>
+                  <div id="annotated-empty" class="empty-state result-empty">
+                    <span>Chưa có kết quả</span>
+                    <small>Bounding box, class và video kết quả sẽ xuất hiện tại đây.</small>
+                  </div>
+                  <a id="download-link" class="download-link" download>Tải kết quả</a>
+                </div>
+              </div>
+
+              <div class="insight-grid">
+                <div class="table-card inner-card">
+                  <div class="card-top">
+                    <h4>Thống kê theo class</h4>
+                    <span class="mini-badge">Summary</span>
+                  </div>
+                  <div id="counts-table" class="table-placeholder">Chưa có dữ liệu.</div>
+                </div>
+
+                <div class="table-card inner-card">
+                  <div class="card-top">
+                    <h4 id="details-title">Chi tiết kết quả</h4>
+                    <span class="mini-badge">Details</span>
+                  </div>
+                  <div id="detections-table" class="table-placeholder">Chưa có dữ liệu.</div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="section container" id="dinh-huong">
+          <div class="section-grid roadmap-grid">
+            <div class="section-title left-align">
+              <p class="section-eyebrow">Hướng phát triển</p>
+              <h2>Lộ trình rõ ràng để cải thiện hiệu quả ngoài thực tế</h2>
+              <p>
+                Dự án còn nhiều không gian để tiếp tục phát triển: dùng mô hình mạnh hơn như YOLOv8s,
+                cải thiện nhãn ở các lớp dễ nhầm, mở rộng dashboard trực quan hơn và thu thập thêm dữ liệu thực tế tại Việt Nam.
+              </p>
+            </div>
+
+            <div class="roadmap-list">
+              <article class="glass-card roadmap-card">Huấn luyện thêm các biến thể mạnh hơn như YOLOv8s để tăng khả năng phát hiện.</article>
+              <article class="glass-card roadmap-card">Cải thiện chất lượng nhãn ở các lớp dễ nhầm như paper, cardboard và trash.</article>
+              <article class="glass-card roadmap-card">Mở rộng web app với phần giới thiệu nhóm, dashboard và câu chuyện dự án rõ hơn.</article>
+              <article class="glass-card roadmap-card">Thu thập thêm dữ liệu thực tế tại Việt Nam để mô hình bền vững hơn khi triển khai.</article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section container cta-wrap">
+          <div class="cta-panel">
+            <div>
+              <p class="cta-eyebrow">Sẵn sàng cho báo cáo</p>
+              <h2>Biến demo mô hình thành một câu chuyện dự án rõ ràng hơn.</h2>
+              <p>
+                Phiên bản này giữ nguyên backend Flask hiện tại, nhưng đặt nó vào trong một landing page tiếng Việt hiện đại hơn để nhóm dễ trình bày,
+                demo trước lớp và tiếp tục mở rộng sau này.
+              </p>
+            </div>
+            <div class="cta-actions">
+              <a href="#tong-quan" class="light-button">Lên đầu trang</a>
+              <a href="#demo" class="outline-button">Xem phần demo</a>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer container">
+        <p>EcoVision AI - Landing page và demo dự án nhận diện rác thải bằng YOLOv8</p>
+        <p>Frontend mới đã được nối trực tiếp với backend Flask hiện có của nhóm.</p>
+      </footer>
+    </div>
+
+    <script>
+      window.APP_CONFIG = {
+        modelsAvailable: {{ models|tojson }}
+      };
+    </script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  </body>
+</html>

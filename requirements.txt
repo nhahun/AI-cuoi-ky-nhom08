@@ -1,0 +1,7 @@
+flask==3.1.0
+ultralytics==8.4.37
+pillow>=10.0.0
+numpy>=1.26.0
+opencv-python>=4.10.0
+lap>=0.5.12
+imageio-ffmpeg>=0.6.0
