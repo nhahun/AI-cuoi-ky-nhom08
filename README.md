@@ -265,7 +265,7 @@ Vai trò:
 Mặc định script phân tích dataset:
 
 ```text
-taco_merged_5class_yolo
+taco_merged_5class_yolo [https://www.kaggle.com/datasets/vencerlanz09/taco-dataset-yolo-format/data]
 ```
 
 ### 2. Remap bộ dữ liệu ngoài về 4 lớp tương thích
@@ -279,7 +279,7 @@ python remap_garbage_dataset_to_4class.py
 Script này đọc từ:
 
 ```text
-GARBAGE CLASSIFICATION
+GARBAGE CLASSIFICATION [https://www.kaggle.com/datasets/asdasdasasdas/garbage-classification]
 ```
 
 và tạo ra:
