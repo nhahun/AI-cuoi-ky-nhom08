@@ -1,43 +1,294 @@
 # Dự Án Nhận Diện Rác Thải Bằng YOLOv8
 
-Dự án này xây dựng mô hình nhận diện rác thải trong ảnh, video bãi rác hoặc môi trường thực tế bằng YOLOv8. Hệ thống có nhiệm vụ phát hiện vị trí vật thể và phân loại chúng thành 5 nhóm chính:
+Đây là dự án nhận diện rác thải trong ảnh và video bằng YOLOv8, đồng thời tích hợp sẵn một ứng dụng web demo bằng Flask để phục vụ báo cáo, trình bày sản phẩm và chạy suy luận trực tiếp trên dữ liệu thực tế.
 
-- `plastic`
-- `metal`
-- `paper`
-- `cardboard`
-- `trash`
+Hệ thống tập trung vào hai bài toán chính:
 
-Ngoài phần huấn luyện mô hình, dự án hiện đã có một ứng dụng web demo hoàn chỉnh bằng `Flask + HTML + CSS + JavaScript` để phục vụ báo cáo và trình bày sản phẩm. Ứng dụng này hỗ trợ cả ảnh tĩnh lẫn video, trong đó video được quét trên toàn bộ clip để thống kê số lượng rác theo từng lớp.
+- phát hiện vị trí vật thể rác trong ảnh hoặc video,
+- phân loại chúng vào 5 lớp mục tiêu:
+  - `plastic`
+  - `metal`
+  - `paper`
+  - `cardboard`
+  - `trash`
 
-## Mục Tiêu Dự Án
+Ngoài phần mô hình, project hiện tại đã được tổ chức lại theo hướng gọn hơn: toàn bộ backend Flask, giao diện web, script xử lý dữ liệu và model demo đều nằm ngay ở thư mục gốc để thuận tiện chạy thử và trình bày.
 
-- Phát hiện rác thải trong ảnh thực tế
-- Phát hiện và thống kê rác thải trong video thực tế
-- Phân loại rác theo 5 lớp đã định nghĩa
-- Xây dựng quy trình hoàn chỉnh từ xử lý dữ liệu, huấn luyện, fine-tune đến demo suy luận
-- Tạo ứng dụng web để trực quan hóa kết quả nhận diện
+## Tổng Quan Dự Án
 
-## Tổng Quan Dữ Liệu
+Project được xây dựng theo một pipeline hoàn chỉnh, không dừng ở bước train mô hình:
 
-Ban đầu dự án sử dụng bộ dữ liệu YOLO 5 lớp:
+- phân tích chất lượng dataset trước huấn luyện,
+- phát hiện và giảm `data leakage` bằng cách `resplit` theo `base image`,
+- remap class từ bộ dữ liệu ngoài về hệ class mục tiêu,
+- merge nhiều nguồn dữ liệu vào cùng một YOLO dataset,
+- fine-tune mô hình YOLOv8n,
+- triển khai một web demo để trực quan hóa kết quả suy luận trên ảnh, video và ảnh chụp từ webcam.
 
-- [taco_merged_5class_yolo](./taco_merged_5class_yolo)
+Điểm mạnh của project không chỉ nằm ở mô hình, mà còn ở việc nhóm đã kiểm soát rõ pipeline dữ liệu để metric đánh giá đáng tin cậy hơn, thay vì train trực tiếp trên dữ liệu chưa được kiểm tra.
 
-Sau đó bổ sung thêm bộ dữ liệu bên ngoài:
+## 5 Lớp Rác Mục Tiêu
 
-- [GARBAGE CLASSIFICATION](./GARBAGE%20CLASSIFICATION)
+Mô hình hiện tại phát hiện và phân loại 5 nhóm rác chính:
 
-Bộ dữ liệu này có 6 lớp:
+- `plastic`: chai nhựa, bao bì nhựa, vật thể nhựa phổ biến
+- `metal`: lon, hộp kim loại, vật thể có bề mặt kim loại
+- `paper`: giấy vụn, giấy in, vật liệu giấy mỏng
+- `cardboard`: thùng carton, bìa cứng, vật liệu đóng gói
+- `trash`: các loại rác còn lại không thuộc 4 lớp trên
 
-- `BIODEGRADABLE`
-- `CARDBOARD`
-- `GLASS`
-- `METAL`
-- `PAPER`
-- `PLASTIC`
+## Cấu Trúc Thư Mục Hiện Tại
 
-Để thống nhất với bài toán hiện tại, chỉ giữ lại 4 lớp có thể ánh xạ trực tiếp:
+Project hiện tại đã được rút gọn về một cấu trúc thống nhất ở thư mục gốc:
+
+```text
+.
+├── app.py
+├── analyze_yolo_dataset.py
+├── merge_yolo_datasets.py
+├── remap_garbage_dataset_to_4class.py
+├── resplit_yolo_dataset.py
+├── requirements.txt
+├── test.jpg
+├── yolov8n.pt
+├── models/
+│   ├── baseline_best.pt
+│   ├── finetune_best.pt
+│   └── finetune_best_git_backup.pt
+├── templates/
+│   └── index.html
+└── static/
+    ├── css/
+    │   └── styles.css
+    ├── js/
+    │   └── app.js
+    └── generated/
+```
+
+### Ý nghĩa các thành phần chính
+
+- `app.py`  
+  Backend Flask xử lý giao diện, API dự đoán ảnh/video và logic suy luận YOLOv8.
+
+- `templates/index.html`  
+  Landing page kết hợp trực tiếp với khu vực demo, dùng để trình bày tổng quan dự án và chạy thử mô hình trên cùng một giao diện.
+
+- `static/css/styles.css`  
+  Toàn bộ phần giao diện, bố cục, hiệu ứng và theme sáng/tối.
+
+- `static/js/app.js`  
+  Xử lý upload ảnh, upload video, mở webcam, gửi request dự đoán và cập nhật kết quả ra giao diện.
+
+- `static/generated/`  
+  Nơi lưu các file video đầu vào và video đầu ra đã vẽ bounding box trong quá trình demo.
+
+- `models/`  
+  Thư mục chứa các checkpoint dùng cho demo:
+  - `baseline_best.pt`: mô hình baseline
+  - `finetune_best.pt`: mô hình fine-tune, được chọn làm model mặc định trên web
+
+- `analyze_yolo_dataset.py`, `remap_garbage_dataset_to_4class.py`, `merge_yolo_datasets.py`, `resplit_yolo_dataset.py`  
+  Bộ script xử lý dữ liệu phục vụ pipeline huấn luyện.
+
+## Tính Năng Web Demo
+
+Ứng dụng web hiện tại hỗ trợ:
+
+- tải ảnh từ máy tính để nhận diện rác,
+- tải video từ máy tính để quét toàn bộ clip,
+- chụp ảnh trực tiếp từ webcam,
+- chọn model giữa baseline và fine-tuned,
+- điều chỉnh ngưỡng `confidence`,
+- thiết lập số lượng detection tối đa (`max_det`),
+- hiển thị ảnh/video đầu vào và ảnh/video kết quả,
+- thống kê số lượng rác theo từng lớp,
+- hiển thị bảng chi tiết detection,
+- tải ảnh hoặc video kết quả về máy,
+- chuyển đổi giao diện sáng/tối,
+- trình bày dự án bằng landing page ngay trên cùng giao diện demo.
+
+### Hỗ trợ định dạng
+
+Ảnh:
+
+- `.jpg`
+- `.jpeg`
+- `.png`
+- `.bmp`
+- `.webp`
+
+Video:
+
+- `.mp4`
+- `.mov`
+- `.avi`
+- `.mkv`
+- `.webm`
+- `.m4v`
+
+## Cơ Chế Đếm Trong Video
+
+Phần video của project không đếm theo kiểu cộng dồn tất cả bounding box ở mọi frame. Thay vào đó, ứng dụng quét toàn bộ clip và dùng `tracking` để tránh đếm trùng cùng một vật thể.
+
+Cụ thể:
+
+- video được xử lý bằng `model.track(...)` của Ultralytics,
+- tracker dùng cấu hình `bytetrack.yaml`,
+- mỗi vật thể được gán một `track ID`,
+- nếu cùng một vật thể xuất hiện qua nhiều frame nhưng vẫn giữ nguyên `track ID`, hệ thống chỉ tính đó là `1` đối tượng duy nhất.
+
+Nhờ vậy, thống kê cuối cùng phản ánh gần đúng số lượng vật thể thực sự xuất hiện trong toàn bộ video, thay vì số box lặp lại theo thời gian.
+
+Ngoài tổng số theo lớp, app còn trả về thêm:
+
+- số frame đã quét,
+- số frame ước lượng của video,
+- FPS,
+- thời lượng video,
+- tổng số box xuất hiện trên toàn bộ frame,
+- tỷ lệ frame có tracking,
+- số box chưa được tracker cấp ID và bị bỏ qua khỏi thống kê duy nhất.
+
+## Cách Chạy Web Demo
+
+### 1. Cài thư viện
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Chạy ứng dụng
+
+```bash
+python app.py
+```
+
+### 3. Mở trình duyệt
+
+```text
+http://127.0.0.1:5000
+```
+
+Nếu giao diện chưa cập nhật sau khi chỉnh sửa HTML, CSS hoặc JavaScript, hãy tải cứng lại trình duyệt bằng:
+
+```text
+Ctrl + F5
+```
+
+## Model Demo Hiện Có
+
+Web app tự động quét hai model trong thư mục `models/`:
+
+- `models/baseline_best.pt`
+- `models/finetune_best.pt`
+
+Trong đó:
+
+- `finetune_best.pt` là model mặc định,
+- `baseline_best.pt` dùng để so sánh nhanh khi trình bày,
+- nếu thiếu cả hai file `.pt`, API sẽ báo lỗi và demo không thể chạy.
+
+## Cách Dùng Demo
+
+### Dự đoán trên ảnh
+
+1. Chọn model
+2. Kéo thanh `confidence`
+3. Tải ảnh lên hoặc chụp từ webcam
+4. Bấm `Quét ngay`
+5. Xem:
+   - ảnh gốc,
+   - ảnh đã nhận diện,
+   - số lượng theo lớp,
+   - bảng chi tiết bounding box
+
+### Dự đoán trên video
+
+1. Tải video lên
+2. Chọn model và ngưỡng confidence
+3. Bấm `Quét ngay`
+4. Hệ thống sẽ:
+   - quét toàn bộ clip,
+   - vẽ bounding box lên video đầu ra,
+   - thống kê số đối tượng theo `track ID`,
+   - lưu kết quả vào `static/generated/`
+
+## Suy Luận Bằng Dòng Lệnh
+
+Nếu muốn thử nhanh mô hình ngoài giao diện web, có thể dùng các lệnh YOLO sau:
+
+### Dự đoán trên một ảnh
+
+```bash
+yolo detect predict model=models/finetune_best.pt source=test.jpg
+```
+
+### Dự đoán với ngưỡng confidence
+
+```bash
+yolo detect predict model=models/finetune_best.pt source=test.jpg conf=0.25 save_txt=True save_conf=True
+```
+
+### Dự đoán bằng webcam
+
+```bash
+yolo detect predict model=models/finetune_best.pt source=0
+```
+
+### Dự đoán trên video
+
+```bash
+yolo detect predict model=models/finetune_best.pt source=video.mp4
+```
+
+## Quy Trình Xử Lý Dữ Liệu
+
+Một phần quan trọng của project là pipeline xử lý dữ liệu. Nhóm không huấn luyện trực tiếp trên dữ liệu thô mà thực hiện kiểm tra, chuẩn hóa và chia lại dữ liệu để hạn chế leakage.
+
+### 1. Phân tích dataset
+
+Script:
+
+```bash
+python analyze_yolo_dataset.py
+```
+
+Vai trò:
+
+- đếm số ảnh, số label, số bounding box,
+- thống kê phân bố class,
+- phát hiện dòng label lỗi format,
+- tìm ảnh thiếu label hoặc label thiếu ảnh,
+- phát hiện mức độ lặp `base image`,
+- kiểm tra chồng lấn `base image` giữa các split `train`, `val`, `test`.
+
+Mặc định script phân tích dataset:
+
+```text
+taco_merged_5class_yolo
+```
+
+### 2. Remap bộ dữ liệu ngoài về 4 lớp tương thích
+
+Script:
+
+```bash
+python remap_garbage_dataset_to_4class.py
+```
+
+Script này đọc từ:
+
+```text
+GARBAGE CLASSIFICATION
+```
+
+và tạo ra:
+
+```text
+garbage_4class_yolo
+```
+
+Ánh xạ class:
 
 - `PLASTIC -> plastic`
 - `METAL -> metal`
@@ -49,315 +300,116 @@ Hai lớp bị loại bỏ:
 - `BIODEGRADABLE`
 - `GLASS`
 
-Sau khi remap, dữ liệu được gộp với bộ dữ liệu gốc và tiếp tục được `resplit` lại theo `base image` để tránh hiện tượng trùng ảnh giữa `train`, `valid`, `test`.
+### 3. Gộp dataset
 
-## Quy Trình Xử Lý Dữ Liệu Của Nhóm
-
-Trong quá trình xây dựng mô hình, nhóm không sử dụng dữ liệu theo cách "train trực tiếp", mà thực hiện một quy trình xử lý dữ liệu có kiểm soát nhằm tăng độ tin cậy của kết quả huấn luyện.
-
-Trước hết, nhóm phân tích bộ dữ liệu YOLO gốc để đánh giá số lượng ảnh, số bounding box, phân bố class và đặc biệt là hiện tượng trùng `base image` giữa các tập `train`, `val`, `test`. Bước này giúp phát hiện sớm tình trạng `data leakage`, tức là nhiều biến thể của cùng một ảnh gốc xuất hiện ở nhiều split khác nhau, từ đó làm sai lệch metric đánh giá mô hình.
-
-Tiếp theo, nhóm thực hiện `resplit` dữ liệu theo `base image` thay vì theo từng file ảnh riêng lẻ. Cách làm này đảm bảo mọi phiên bản augment hoặc export từ cùng một ảnh gốc chỉ nằm trong đúng một split duy nhất. Nhờ đó, tập huấn luyện và tập đánh giá được tách biệt rõ ràng hơn, giúp kết quả mAP phản ánh đúng hơn năng lực tổng quát hóa của mô hình.
-
-Sau khi ổn định bộ dữ liệu gốc, nhóm bổ sung thêm dữ liệu từ nguồn bên ngoài để tăng số lượng mẫu huấn luyện cho các lớp còn thiếu. Tuy nhiên, bộ dữ liệu ngoài có hệ class khác với bài toán đang xây dựng, vì vậy nhóm tiến hành `remap` class, chỉ giữ lại các lớp có ý nghĩa tương thích trực tiếp là `plastic`, `metal`, `paper` và `cardboard`, đồng thời loại bỏ các lớp không phù hợp như `glass` và `biodegradable`.
-
-Cuối cùng, nhóm gộp bộ dữ liệu ngoài đã remap với bộ dữ liệu gốc 5 class, sau đó tiếp tục chia lại toàn bộ dữ liệu theo `base image` thêm một lần nữa. Bộ dữ liệu kết quả sau bước này được sử dụng để fine-tune mô hình YOLOv8n từ checkpoint baseline. Quy trình này giúp nhóm vừa mở rộng dữ liệu huấn luyện, vừa hạn chế nhiễu ngữ nghĩa class và tránh leakage trong toàn bộ pipeline.
-
-## Các Thư Mục Quan Trọng
-
-- [taco_merged_5class_yolo](./taco_merged_5class_yolo)  
-Bộ dữ liệu YOLO 5 lớp ban đầu
-
-- [taco_merged_5class_yolo_resplit](./taco_merged_5class_yolo_resplit)  
-Bộ dữ liệu gốc sau khi resplit để loại bỏ leakage
-
-- [GARBAGE CLASSIFICATION](./GARBAGE%20CLASSIFICATION)  
-Bộ dữ liệu tải thêm trước khi remap class
-
-- [garbage_4class_yolo](./garbage_4class_yolo)  
-Bộ dữ liệu ngoài sau khi giữ lại 4 lớp tương thích
-
-- [merged_5class_yolo](./merged_5class_yolo)  
-Bộ dữ liệu sau khi gộp bộ cũ và bộ mới
-
-- [merged_5class_yolo_resplit](./merged_5class_yolo_resplit)  
-Bộ dữ liệu cuối cùng dùng để fine-tune tiếp
-
-- [runs/detect/runs_yolo_baseline/trash_yolov8n_cpu/weights/best.pt](./runs/detect/runs_yolo_baseline/trash_yolov8n_cpu/weights/best.pt)  
-Model baseline tốt nhất hiện tại, dùng để demo ổn định
-
-- [demo_app](./demo_app)  
-Ứng dụng web demo hoàn chỉnh bằng Flask
-
-- [scripts](./scripts)  
-Thư mục chứa các script xử lý dữ liệu: phân tích, remap, merge và resplit dataset
-
-## Quy Trình Huấn Luyện
-
-### 1. Phân tích dữ liệu
+Script:
 
 ```bash
-python scripts/analyze_yolo_dataset.py
+python merge_yolo_datasets.py
 ```
 
-### 2. Resplit dữ liệu để tránh leakage
+Script gộp:
+
+- `taco_merged_5class_yolo`
+- `garbage_4class_yolo`
+
+để tạo ra:
+
+```text
+merged_5class_yolo
+```
+
+Trong quá trình gộp, script thêm prefix vào tên file để tránh trùng giữa hai nguồn dữ liệu.
+
+### 4. Resplit để giảm leakage
+
+Script:
 
 ```bash
-python scripts/resplit_yolo_dataset.py --source merged_5class_yolo --output merged_5class_yolo_resplit
+python resplit_yolo_dataset.py --source merged_5class_yolo --output merged_5class_yolo_resplit
 ```
 
-### 3. Huấn luyện baseline YOLOv8n
+Script này:
+
+- gom ảnh theo `base image`,
+- chia lại theo tỷ lệ `train`, `valid`, `test`,
+- giữ các phiên bản augment của cùng một ảnh trong cùng một split,
+- tạo lại `data.yaml` cho bộ dữ liệu đầu ra.
+
+Các tham số hỗ trợ:
+
+- `--source`
+- `--output`
+- `--train-ratio`
+- `--val-ratio`
+- `--test-ratio`
+- `--seed`
+
+## Thứ Tự Pipeline Đề Xuất
+
+Nếu bạn có đầy đủ dataset đặt đúng tên thư mục mà các script đang kỳ vọng, quy trình nên chạy theo thứ tự:
+
+1. `python analyze_yolo_dataset.py`
+2. `python remap_garbage_dataset_to_4class.py`
+3. `python merge_yolo_datasets.py`
+4. `python resplit_yolo_dataset.py --source merged_5class_yolo --output merged_5class_yolo_resplit`
+5. train baseline YOLOv8n
+6. fine-tune trên bộ dữ liệu đã gộp và resplit
+
+## Lệnh Huấn Luyện Tham Khảo
+
+### Train baseline YOLOv8n
 
 ```bash
 yolo detect train data=taco_merged_5class_yolo_resplit/data.yaml model=yolov8n.pt imgsz=640 epochs=50 batch=8 workers=0 device=cpu project=runs_yolo_baseline name=trash_yolov8n_cpu
 ```
 
-### 4. Fine-tune trên bộ dữ liệu đã gộp
+### Fine-tune trên bộ dữ liệu đã gộp
 
 ```bash
 yolo detect train data=merged_5class_yolo_resplit/data.yaml model=runs/detect/runs_yolo_baseline/trash_yolov8n_cpu/weights/best.pt imgsz=640 epochs=30 batch=8 workers=0 device=cpu project=runs_yolo_baseline name=trash_yolov8n_finetune_merged
 ```
 
-### 5. Tiếp tục train nếu bị gián đoạn
+### Tiếp tục train nếu bị gián đoạn
 
 ```bash
 yolo detect train resume model=runs/detect/runs_yolo_baseline/trash_yolov8n_finetune_merged/weights/last.pt
 ```
 
-## Ứng Dụng Web Demo
+## Môi Trường Và Thư Viện
 
-Ứng dụng web hiện tại được đặt trong thư mục:
+Các thư viện chính trong project hiện tại:
 
-- [demo_app](./demo_app)
+- `Flask 3.1.0`
+- `Ultralytics 8.4.37`
+- `Pillow`
+- `NumPy`
+- `OpenCV`
+- `imageio-ffmpeg`
+- `lap`
 
-### Tính năng chính
-
-- Tải ảnh từ máy tính
-- Tải video từ máy tính
-- Chụp ảnh trực tiếp bằng webcam
-- Chọn model để dự đoán
-- Điều chỉnh ngưỡng confidence
-- Hiển thị ảnh/video đầu vào và ảnh/video đã nhận diện
-- Quét toàn bộ video và tạo thống kê số lượng rác theo từng class
-- Xuất video kết quả có vẽ bounding box
-- Thống kê số lượng theo từng class
-- Hiển thị bảng chi tiết từng bounding box
-- Tải ảnh hoặc video kết quả về máy
-- Hỗ trợ chế độ sáng và tối
-
-### Chế độ quét video
-
-Khi người dùng tải một video lên, hệ thống không chỉ dự đoán trên một frame đơn lẻ mà sẽ quét toàn bộ video từ đầu đến cuối. Trong quá trình này, YOLOv8 được dùng cùng cơ chế `object tracking` để gán `track ID` cho từng vật thể khi nó di chuyển qua nhiều frame liên tiếp.
-
-Cách đếm của hệ thống video được thiết kế để tránh lặp:
-- Nếu một vật thể xuất hiện ở nhiều frame nhưng vẫn giữ cùng một `track ID`, hệ thống chỉ tính đó là `1` đối tượng duy nhất.
-- Kết quả cuối cùng là tổng số vật thể theo từng class trên toàn bộ video, thay vì cộng dồn đơn giản số box ở mọi frame.
-
-Ngoài thống kê theo class, ứng dụng còn hiển thị thêm các thông tin hỗ trợ phân tích video như:
-- số frame đã quét,
-- FPS của video,
-- thời lượng video,
-- tổng số box xuất hiện trên các frame,
-- tỉ lệ frame có tracking,
-- và video đầu ra đã được vẽ bounding box để người dùng đối chiếu trực quan.
-
-### Cấu trúc thư mục app
-
-- [demo_app/app.py](./demo_app/app.py)  
-Backend Flask xử lý API dự đoán
-
-- [demo_app/models](./demo_app/models)  
-Thư mục chứa các model dùng riêng cho phần demo web
-
-- [demo_app/templates/index.html](./demo_app/templates/index.html)  
-Giao diện chính
-
-- [demo_app/static/css/styles.css](./demo_app/static/css/styles.css)  
-Toàn bộ phần giao diện và theme sáng/tối
-
-- [demo_app/static/js/app.js](./demo_app/static/js/app.js)  
-Xử lý upload ảnh, camera, gửi request dự đoán và cập nhật giao diện
-
-- [demo_app/requirements.txt](./demo_app/requirements.txt)  
-Các thư viện cần thiết để chạy app
-
-### Cách chạy app
-
-```bash
-cd demo_app
-python app.py
-```
-
-Sau đó mở trình duyệt tại:
+File cài đặt:
 
 ```text
-http://127.0.0.1:5000
+requirements.txt
 ```
 
-Nếu giao diện chưa cập nhật sau khi chỉnh sửa file, hãy dùng:
+Khuyến nghị dùng:
 
-```text
-Ctrl + F5
-```
+- Python `3.12+`
+- môi trường ảo `venv`
 
-để tải lại toàn bộ CSS và JavaScript.
+## Một Số Lưu Ý
 
-## Cách Chạy Demo Bằng Dòng Lệnh
-
-### Dự đoán trên một ảnh
-
-```bash
-yolo detect predict model=runs/detect/runs_yolo_baseline/trash_yolov8n_cpu/weights/best.pt source=test.jpg
-```
-
-### Dự đoán với ngưỡng confidence
-
-```bash
-yolo detect predict model=runs/detect/runs_yolo_baseline/trash_yolov8n_cpu/weights/best.pt source=test.jpg conf=0.25 save_txt=True save_conf=True
-```
-
-### Dự đoán bằng webcam
-
-```bash
-yolo detect predict model=runs/detect/runs_yolo_baseline/trash_yolov8n_cpu/weights/best.pt source=0
-```
-
-### Dự đoán trên video
-
-```bash
-yolo detect predict model=runs/detect/runs_yolo_baseline/trash_yolov8n_cpu/weights/best.pt source=video.mp4
-```
-
-## Môi Trường Sử Dụng
-
-Môi trường hiện tại của dự án:
-
-- Python `3.12.5`
-- Ultralytics `8.4.37`
-- PyTorch `2.11.0+cpu`
-- Flask `3.1.0`
-
-Cài thư viện cho app web:
-
-```bash
-cd demo_app
-pip install -r requirements.txt
-```
-
-## Các Script Đã Xây Dựng
-
-Các script này được đặt trong thư mục [scripts](./scripts) và là phần rất quan trọng của pipeline xử lý dữ liệu. Chúng giúp dự án không chỉ dừng ở việc train model, mà còn thể hiện rõ cách nhóm làm sạch dữ liệu, tránh leakage và chuẩn hóa đầu vào trước khi fine-tune.
-
-### 1. [analyze_yolo_dataset.py](./scripts/analyze_yolo_dataset.py)
-
-Vai trò:
-- Phân tích nhanh chất lượng của một YOLO dataset trước khi huấn luyện.
-
-Script này làm gì:
-- Đếm số ảnh, số label và số bounding box trong từng split `train`, `val`, `test`.
-- Thống kê số box theo từng class để phát hiện mất cân bằng dữ liệu.
-- Kiểm tra các dòng label bị lỗi format, class id sai hoặc ảnh bị thiếu label.
-- Phân tích mức độ lặp lại của cùng một `base image`.
-- So sánh `base image` giữa các split để phát hiện hiện tượng `data leakage`.
-
-Khi nào dùng:
-- Dùng đầu tiên, trước khi train baseline.
-- Dùng lại sau mỗi lần tạo dataset mới nếu muốn kiểm tra nhanh độ sạch của dữ liệu.
-
-Đầu vào mặc định:
-- `taco_merged_5class_yolo`
-
-Đầu ra:
-- Một báo cáo JSON in ra console, phù hợp để lưu log hoặc trích số liệu sang báo cáo đồ án.
-
-### 2. [resplit_yolo_dataset.py](./scripts/resplit_yolo_dataset.py)
-
-Vai trò:
-- Chia lại dataset YOLO theo `base image` thay vì chia ngẫu nhiên từng file ảnh.
-
-Vì sao cần script này:
-- Dataset export từ Roboflow hoặc qua augment thường có nhiều biến thể của cùng một ảnh gốc.
-- Nếu các biến thể này rơi vào nhiều split khác nhau, model có thể đạt metric cao giả tạo.
-
-Script này làm gì:
-- Gom các file ảnh thuộc cùng một `base image` vào chung một nhóm.
-- Chia các nhóm này vào `train`, `valid`, `test` theo tỉ lệ đặt trước.
-- Copy ảnh và label sang một thư mục dataset mới.
-- Tạo lại `data.yaml` để dataset đầu ra dùng được ngay với YOLOv8.
-
-Khi nào dùng:
-- Dùng sau khi đã kiểm tra thấy dataset có leakage.
-- Dùng lại sau khi merge nhiều nguồn dữ liệu vào chung một bộ.
-
-Ví dụ:
-```bash
-python scripts/resplit_yolo_dataset.py --source merged_5class_yolo --output merged_5class_yolo_resplit
-```
-
-### 3. [remap_garbage_dataset_to_4class.py](./scripts/remap_garbage_dataset_to_4class.py)
-
-Vai trò:
-- Chuẩn hóa dataset ngoài về hệ class mà dự án đang sử dụng.
-
-Bối cảnh:
-- Dataset `GARBAGE CLASSIFICATION` có 6 lớp, nhưng bài toán hiện tại chỉ cần các lớp tương thích trực tiếp với bộ dữ liệu gốc.
-
-Script này làm gì:
-- Giữ lại 4 lớp: `PLASTIC`, `METAL`, `PAPER`, `CARDBOARD`.
-- Loại bỏ `GLASS` và `BIODEGRADABLE`.
-- Đổi `class id` của bộ dữ liệu ngoài sang hệ class mới.
-- Bỏ những ảnh không còn bounding box hợp lệ sau bước remap.
-- Tạo ra một dataset YOLO mới tên là `garbage_4class_yolo`.
-
-Khi nào dùng:
-- Dùng ngay sau khi tải bộ dữ liệu ngoài về và trước bước merge.
-
-Ý nghĩa trong dự án:
-- Đây là bước giúp dữ liệu từ nhiều nguồn trở nên thống nhất về ngữ nghĩa class, tránh làm mô hình học bị nhiễu.
-
-### 4. [merge_yolo_datasets.py](./scripts/merge_yolo_datasets.py)
-
-Vai trò:
-- Gộp bộ dữ liệu gốc 5 class với bộ dữ liệu ngoài đã remap thành 4 class.
-
-Script này làm gì:
-- Đọc dữ liệu từ hai nguồn: dataset gốc và dataset ngoài đã remap.
-- Copy ảnh và label sang một thư mục chung.
-- Thêm prefix vào tên file để tránh trùng tên giữa hai nguồn dữ liệu.
-- Tạo `data.yaml` cho bộ dữ liệu YOLO 5 class mới sau khi gộp.
-
-Khi nào dùng:
-- Dùng sau khi đã remap xong dataset ngoài.
-- Dùng trước bước `resplit` cuối cùng và trước khi fine-tune model.
-
-Lưu ý:
-- Sau khi merge xong vẫn nên chạy `resplit_yolo_dataset.py` thêm một lần nữa để tránh leakage trên bộ dữ liệu mới.
-
-### Thứ tự sử dụng 4 script trong pipeline
-
-1. `analyze_yolo_dataset.py`  
-Kiểm tra dataset gốc, phát hiện leakage và vấn đề phân bố class.
-
-2. `remap_garbage_dataset_to_4class.py`  
-Chuẩn hóa dataset ngoài về 4 class tương thích.
-
-3. `merge_yolo_datasets.py`  
-Gộp dataset ngoài đã remap với dataset gốc.
-
-4. `resplit_yolo_dataset.py`  
-Chia lại dataset đã gộp theo `base image` để tạo bộ dữ liệu sạch cho fine-tune.
-
-## Ghi Chú
-
-- Model đang dùng cho demo web đã được gom riêng vào thư mục `demo_app/models` để repo gọn hơn.
-- Model mặc định cho demo chính là bản `finetune_best.pt` vì đây là phiên bản cho kết quả tốt hơn so với baseline.
-- Phiên fine-tune trên bộ dữ liệu gộp có thể cải thiện thêm, nhưng thời gian huấn luyện lâu hơn do tập dữ liệu lớn hơn đáng kể.
-- Muốn cải thiện chất lượng thực tế, cần bổ sung thêm ảnh bãi rác tại đúng bối cảnh triển khai và gán nhãn nhất quán hơn.
-- Nếu terminal Windows hiển thị sai dấu tiếng Việt, hãy ưu tiên kiểm tra kết quả trực tiếp trên trình duyệt vì app dùng `UTF-8`.
+- `static/generated/` sẽ phát sinh thêm file trong quá trình demo video.
+- `finetune_best.pt` đang là model mặc định để trình bày vì cho kết quả tốt hơn baseline.
+- `yolov8n.pt` được giữ trong project để thuận tiện cho việc huấn luyện baseline.
+- Nếu terminal Windows hiển thị sai dấu tiếng Việt, hãy ưu tiên đọc nội dung trực tiếp trên trình duyệt hoặc editor đang dùng `UTF-8`.
 
 ## Hướng Phát Triển
 
-- Huấn luyện model mạnh hơn như `YOLOv8s`
-- Cải thiện nhãn ở các lớp dễ nhầm như `paper`, `cardboard`, `trash`
-- Mở rộng ứng dụng web với phần giới thiệu dự án, thông tin nhóm và dashboard trực quan hơn
-- Thu thập thêm dữ liệu thực tế tại Việt Nam để tăng khả năng tổng quát hóa
+- huấn luyện thêm các backbone mạnh hơn như `YOLOv8s`
+- bổ sung dữ liệu thực tế tại Việt Nam để tăng khả năng tổng quát hóa
+- cải thiện chất lượng nhãn ở các lớp dễ nhầm như `paper`, `cardboard`, `trash`
+- mở rộng phần dashboard trên web để trình bày metric và kết quả trực quan hơn
+- tối ưu thêm tốc độ xử lý video nếu cần chạy trên tập clip dài hơn
